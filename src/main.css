@@ -1,0 +1,20 @@
+document,
+body {
+    margin: 0;
+    overflow: hidden;
+    height: 100%;
+}
+
+.status {
+    position: absolute;
+    top: 0;
+    left: 0;
+    background-color: transparent;
+    color: grey;
+}
+
+#canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
