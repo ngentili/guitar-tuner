@@ -1,81 +1,108 @@
 import './main.css'
-import { frequencyToNoteName } from './notes'
+import { NoteMatch, frequencyToNoteName } from './notes'
 
-const freq = document.getElementById('freq')
-if (!freq) {
-    throw new Error('Element not found')
-}
+(async () => {
+    //
+    // html
+    //
+    const freqStatus = document.getElementById('freq')!
+    const noteStatus = document.getElementById('note')!
+    const devStatus = document.getElementById('deviation')!
 
-const note = document.getElementById('note')
-if (!note) {
-    throw new Error('Element not found')
-}
+    const tunerMiddle = document.getElementById('tuner-indicator')! as HTMLElement
 
-const deviation = document.getElementById('deviation')
-if (!deviation) {
-    throw new Error('Element not found')
-}
+    const spectrum = document.getElementById('spectrum')! as HTMLCanvasElement
+    const spectrumCtx = spectrum.getContext('2d')!
 
-const canvas = document.getElementById('canvas') as HTMLCanvasElement | null
-if (!canvas) {
-    throw new Error('Element not found')
-}
+    let stream: MediaStream
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+    }
+    catch { return }
 
-canvas.width = window.innerWidth
-canvas.height = window.innerHeight
+    //
+    // status
+    //
+    function updateStatus(freq: number, noteMatch: NoteMatch) {
+        freqStatus.innerHTML = `${freq.toFixed().padStart(3, '\u00A0')} HZ`
+        noteStatus.innerHTML = noteMatch.note
+        devStatus.innerHTML = noteMatch.deviation.toFixed(1).replace(/^[^-]/, txt => '+' + txt)
+    }
 
-const canvasCtx = canvas.getContext('2d')
-if (!canvasCtx) {
-    throw new Error('Could not get canvas context')
-}
+    //
+    // tuner
+    //
+    function updateTuner(noteMatch: NoteMatch) {
+        let semitones = noteMatch.deviation
 
-navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(stream => {
+        let containerWidth = tunerMiddle.parentElement!.clientWidth
+        let lineWidth = tunerMiddle.clientWidth
 
-        let audioContext = new AudioContext()
 
-        let source = audioContext.createMediaStreamSource(stream)
 
-        let analyser = audioContext.createAnalyser()
-        analyser.fftSize = 2048
+        // let left = 
+        // let right = 
 
-        let frequencies = Array.from({ length: analyser.frequencyBinCount },
-            (_, i) => (i + 1) * (audioContext.sampleRate / 2) / analyser.frequencyBinCount)
+        // tunerLeft.style.flex = left
+        // tunerRight.style.flex = right
+    }
 
-        source.connect(analyser)
+    //
+    // spectrum
+    //
+    let audioContext = new AudioContext()
 
-        let bufferLength = analyser.frequencyBinCount
-        let freqData = new Uint8Array(bufferLength)
+    let source = audioContext.createMediaStreamSource(stream)
 
-        let barWidth = canvas.width / bufferLength
+    let analyser = audioContext.createAnalyser()
+    analyser.fftSize = 2048
 
-        function draw(c: CanvasRenderingContext2D) {
-            requestAnimationFrame(() => draw(c))
+    let frequencies = Array.from({ length: analyser.frequencyBinCount },
+        (_, i) => (i + 1) * (audioContext.sampleRate / 2) / analyser.frequencyBinCount)
 
-            analyser.getByteFrequencyData(freqData)
+    source.connect(analyser)
 
-            c.fillStyle = 'rgb(0, 0, 0)'
-            c.fillRect(0, 0, c.canvas.width, c.canvas.height)
+    let bufferLength = analyser.frequencyBinCount
+    let freqData = new Uint8Array(bufferLength)
 
-            c.fillStyle = 'rgb(255, 0, 0)'
+    let last100Freqs: number[] = []
 
-            for (let i = 0; i < freqData.length; i++) {
-                let hz = frequencies[i]
-                let db = freqData[i]
+    function draw(c: CanvasRenderingContext2D) {
+        requestAnimationFrame(() => draw(c))
 
-                let barHeight = (db / 255) * c.canvas.height
-                c.fillRect(i * (c.canvas.width / freqData.length), c.canvas.height, barWidth, -barHeight)
-            }
+        let barWidth = c.canvas.width / bufferLength
 
-            let maxFreq = Math.max(...freqData)
+        analyser.getByteFrequencyData(freqData)
 
-            let noteMatch = frequencyToNoteName(maxFreq)
+        c.fillStyle = 'rgb(0, 0, 0)'
+        c.fillRect(0, 0, c.canvas.width, c.canvas.height)
 
-            freq!.innerHTML = maxFreq.toString()
-            note!.innerHTML = noteMatch.note
-            freq!.innerHTML = noteMatch.deviation.toString()
+        c.fillStyle = 'rgb(255, 0, 0)'
+
+        for (let i = 0; i < freqData.length; i++) {
+            let hz = frequencies[i]
+            let db = freqData[i]
+
+            let barHeight = (db / 255) * c.canvas.height
+            c.fillRect(i * (c.canvas.width / freqData.length), c.canvas.height, barWidth, -barHeight)
         }
 
-        requestAnimationFrame(() => draw(canvasCtx))
-    })
+        let maxFreq = Math.max(...freqData)
 
+        last100Freqs.push(maxFreq)
+
+        if (last100Freqs.length > 100) {
+            last100Freqs.shift()
+        }
+
+        let freqSum = last100Freqs.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
+        let freqAvg = freqSum / last100Freqs.length
+
+        let noteMatch = frequencyToNoteName(freqAvg)
+
+        updateStatus(freqAvg, noteMatch)
+        updateTuner(noteMatch)
+    }
+
+    requestAnimationFrame(() => draw(spectrumCtx))
+})()

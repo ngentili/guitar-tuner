@@ -1,4 +1,4 @@
-interface NoteMatch {
+export interface NoteMatch {
     octave: number
     note: string
     deviation: number

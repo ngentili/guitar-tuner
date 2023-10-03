@@ -8,11 +8,21 @@
 </head>
 
 <body>
-    <canvas id="canvas"></canvas>
-    <div class="status">
-        <div id="freq"></div>
-        <div id="note"></div>
-        <div id="deviation"></div>
+    <div class="flexbox-col">
+
+        <div class="status">
+            <pre id="freq"></pre>
+            <pre id="note"></pre>
+            <pre id="deviation"></pre>
+        </div>
+
+        <div class="flex-1" style="position: relative">
+            <div id="tuner-center"></div>
+            <div id="tuner-indicator"></div>
+        </div>
+
+        <canvas class="flex-1" id="spectrum"></canvas>
+
     </div>
 </body>
 
