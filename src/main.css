@@ -7,14 +7,6 @@ body {
     color: whitesmoke;
 }
 
-.w-100 {
-    width: 100%;
-}
-
-.h-100 {
-    height: 100%;
-}
-
 .flexbox-row {
     display: flex;
     flex-direction: row;
@@ -29,9 +21,6 @@ body {
 
 .flex-1 {
     flex: 1;
-}
-
-.status {
 }
 
 pre {
@@ -60,9 +49,12 @@ pre {
     transition: left 0.5s ease;
 }
 
-.spectrum-container {
-}
-
 #spectrum {
     height: 100%;
+    width: 100%;
+}
+
+#oscilloscope {
+    height: 100%;
+    width: 100%;
 }

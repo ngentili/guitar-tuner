@@ -10,7 +10,7 @@
 <body>
     <div class="flexbox-col">
 
-        <div class="status">
+        <div>
             <pre id="freq"></pre>
             <pre id="note"></pre>
             <pre id="deviation"></pre>
@@ -21,8 +21,13 @@
             <div id="tuner-indicator"></div>
         </div>
 
-        <div class="flex-1 spectrum-container">
-            <canvas id="spectrum"></canvas>
+        <div id="graph-container" class="flex-1 flexbox-row">
+            <div class="flex-1">
+                <canvas id="spectrum"></canvas>
+            </div>
+            <div class="flex-1">
+                <canvas id="oscilloscope"></canvas>
+            </div>
         </div>
 
     </div>
