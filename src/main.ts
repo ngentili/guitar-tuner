@@ -1,7 +1,11 @@
 import './main.css'
 import { NoteMatch, frequencyToNoteName } from './notes'
 
-(async () => {
+const nbsp ='\u00A0'
+
+navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => run(stream))
+
+function run(stream: MediaStream) {
     //
     // html
     //
@@ -14,17 +18,11 @@ import { NoteMatch, frequencyToNoteName } from './notes'
     const spectrum = document.getElementById('spectrum')! as HTMLCanvasElement
     const spectrumCtx = spectrum.getContext('2d')!
 
-    let stream: MediaStream
-    try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-    }
-    catch { return }
-
     //
     // status
     //
     function updateStatus(freq: number, noteMatch: NoteMatch) {
-        freqStatus.innerHTML = `${freq.toFixed().padStart(3, '\u00A0')} HZ`
+        freqStatus.innerHTML = `${freq.toFixed().padStart(3, nbsp)} hz`
         noteStatus.innerHTML = noteMatch.note
         devStatus.innerHTML = noteMatch.deviation.toFixed(1).replace(/^[^-]/, txt => '+' + txt)
     }
@@ -32,19 +30,13 @@ import { NoteMatch, frequencyToNoteName } from './notes'
     //
     // tuner
     //
-    function updateTuner(noteMatch: NoteMatch) {
-        let semitones = noteMatch.deviation
-
-        let containerWidth = tunerMiddle.parentElement!.clientWidth
+    function updateTuner(deviationInSemitones: number) {
         let lineWidth = tunerMiddle.clientWidth
 
+        let leftPercent = Math.round(deviationInSemitones * 100) + 50
+        let halfLineWidth = (lineWidth / 2).toFixed(1)
 
-
-        // let left = 
-        // let right = 
-
-        // tunerLeft.style.flex = left
-        // tunerRight.style.flex = right
+        tunerMiddle.style.left = `calc(${leftPercent}% - ${halfLineWidth}px)`
     }
 
     //
@@ -65,7 +57,8 @@ import { NoteMatch, frequencyToNoteName } from './notes'
     let bufferLength = analyser.frequencyBinCount
     let freqData = new Uint8Array(bufferLength)
 
-    let last100Freqs: number[] = []
+    let lastXFreqs: number[] = []
+    let freqCount = 100
 
     function draw(c: CanvasRenderingContext2D) {
         requestAnimationFrame(() => draw(c))
@@ -89,20 +82,20 @@ import { NoteMatch, frequencyToNoteName } from './notes'
 
         let maxFreq = Math.max(...freqData)
 
-        last100Freqs.push(maxFreq)
+        lastXFreqs.push(maxFreq)
 
-        if (last100Freqs.length > 100) {
-            last100Freqs.shift()
+        if (lastXFreqs.length > freqCount) {
+            lastXFreqs.shift()
         }
 
-        let freqSum = last100Freqs.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
-        let freqAvg = freqSum / last100Freqs.length
+        let freqSum = lastXFreqs.reduce((accumulator, currentValue) => accumulator + currentValue, 0)
+        let freqAvg = freqSum / lastXFreqs.length
 
         let noteMatch = frequencyToNoteName(freqAvg)
 
         updateStatus(freqAvg, noteMatch)
-        updateTuner(noteMatch)
+        updateTuner(noteMatch.deviation)
     }
 
     requestAnimationFrame(() => draw(spectrumCtx))
-})()
+}

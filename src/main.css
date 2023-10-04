@@ -2,7 +2,7 @@ html,
 body {
     margin: 0;
     height: 100vh;
-    /* overflow: hidden; */
+    overflow: hidden;
     background-color: black;
     color: whitesmoke;
 }
@@ -32,18 +32,21 @@ body {
 }
 
 .status {
-    height: 50px;
 }
 
 pre {
     margin: 0;
 }
 
+.tuner-container {
+    position: relative;
+}
+
 #tuner-center {
     position: absolute;
     height: 100%;
-    left: calc(50% - 1px);
-    width: 2px;
+    left: calc(50% - 1.5px);
+    width: 3px;
     background-color: grey;
 }
 
@@ -51,7 +54,15 @@ pre {
     position: relative;
     top: 15%;
     height: 70%;
-    left: calc(30% - 1px);
-    width: 2px;
+    left: calc(50% - 0.5px);
+    width: 1px;
     background-color: white;
+    transition: left 0.5s ease;
+}
+
+.spectrum-container {
+}
+
+#spectrum {
+    height: 100%;
 }
