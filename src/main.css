@@ -1,3 +1,7 @@
+:root {
+    --layout-outline: 1px solid orange;
+}
+
 html,
 body {
     margin: 0;
@@ -29,6 +33,7 @@ pre {
 
 .tuner-container {
     position: relative;
+    outline: var(--layout-outline);
 }
 
 #tuner-center {
@@ -49,12 +54,27 @@ pre {
     transition: left 0.5s ease;
 }
 
+#spectrum-container {
+    position: relative;
+}
+
 #spectrum {
     height: 100%;
     width: 100%;
+    outline: var(--layout-outline);
+}
+
+#spectrum-indicator {
+    position: absolute;
+    top: 0;
+    height: 10%;
+    right: 0;
+    background-color: transparent;
+    font-family: monospace;
 }
 
 #oscilloscope {
     height: 100%;
     width: 100%;
+    outline: var(--layout-outline);
 }

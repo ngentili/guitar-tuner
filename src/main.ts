@@ -1,5 +1,5 @@
 import './main.css'
-import { NoteDetectionResult, findNote } from './note-detection'
+import { NoteDetectionResult, getNoteFromHz } from './note-detection'
 import pitchfinder from 'pitchfinder'
 
 navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => run(stream))
@@ -19,6 +19,8 @@ function run(stream: MediaStream) {
     const spectrum = document.getElementById('spectrum')! as HTMLCanvasElement
     const spectrumCtx = spectrum.getContext('2d')!
 
+    const spectrumIndicator = document.getElementById('spectrum-indicator')! as HTMLCanvasElement
+
     const oscilloscope = document.getElementById('oscilloscope')! as HTMLCanvasElement
     const oscilloscopeCtx = oscilloscope.getContext('2d')!
 
@@ -33,24 +35,41 @@ function run(stream: MediaStream) {
         oscilloscope.width = w
     })
 
+    spectrum.addEventListener('mousemove', e => {
+        let xFraction = e.clientX / spectrum.width
+        let minFreq = 0
+        let maxFreq = audioContext.sampleRate / 2
+        let hz = Math.round(xFraction * (maxFreq - minFreq))
+        spectrumIndicator.innerHTML = `${hz} hz`
+    })
+
+    spectrum.addEventListener('mouseout', e => { spectrumIndicator.innerHTML = '' })
+
     //
     // status
     //
-    function updateStatus(hz: number, noteResult: NoteDetectionResult) {
+    function updateStatus(hz: number | null, noteResult: NoteDetectionResult) {
         const nbsp = '\u00A0'
 
-        freqStatus.innerHTML = `${hz.toFixed().padStart(3, nbsp)} hz`
-        noteStatus.innerHTML = noteResult.note
-        devStatus.innerHTML = noteResult.semitones.toFixed(1).replace(/^[^-]/, txt => '+' + txt)
+        if (hz) {
+            freqStatus.innerHTML = `${hz.toFixed().padStart(3, nbsp)} hz`
+            noteStatus.innerHTML = noteResult.note
+            devStatus.innerHTML = noteResult.delta.toFixed(1).replace(/^[^-]/, txt => '+' + txt)
+        }
+        else {
+            freqStatus.innerHTML = nbsp
+            noteStatus.innerHTML = nbsp
+            devStatus.innerHTML = nbsp
+        }
     }
 
     //
     // tuner
     //
-    function updateTuner(semitones: number) {
+    function updateTuner(delta: number) {
         let lineWidth = tunerIndicator.clientWidth
 
-        let leftPercent = Math.round(semitones * 100) + 50
+        let leftPercent = Math.round(delta * 100) + 50
         let halfLineWidth = (lineWidth / 2).toFixed(1)
 
         tunerIndicator.style.left = `calc(${leftPercent}% - ${halfLineWidth}px)`
@@ -65,18 +84,20 @@ function run(stream: MediaStream) {
         let barWidth = c.canvas.width / freqBufferLength
 
         // draw spectrum
-        c.fillStyle = 'rgb(0, 0, 0)'
+        c.fillStyle = 'black'
         c.fillRect(0, 0, c.canvas.width, c.canvas.height)
 
-        c.fillStyle = 'rgb(255, 0, 0)'
+        let hueStep = 360 / freqDomainData.length;
 
         for (let i = 0; i < freqDomainData.length; i++) {
-            // let hz = frequencies[i]
             let db = freqDomainData[i]
 
-            const fraction = (db - analyser.minDecibels) / (analyser.maxDecibels - analyser.minDecibels)
-
+            let fraction = (db - analyser.minDecibels) / (analyser.maxDecibels - analyser.minDecibels)
             let barHeight = fraction * c.canvas.height
+
+            let hue = i * hueStep;
+            c.fillStyle = `hsl(${hue}, 100%, 50%)`
+
             c.fillRect(i * (c.canvas.width / freqDomainData.length), c.canvas.height, barWidth, -barHeight)
         }
     }
@@ -87,19 +108,19 @@ function run(stream: MediaStream) {
     function updateOscilloscope() {
         let c = oscilloscopeCtx
 
-        c.fillStyle = 'rgb(200, 200, 200)'
+        c.fillStyle = 'black'
         c.fillRect(0, 0, c.canvas.width, c.canvas.height)
 
         c.lineWidth = 2
-        c.strokeStyle = 'rgb(0, 0, 0)'
+        c.strokeStyle = 'white'
 
         const sliceWidth = (c.canvas.width * 1.0) / magBufferLength
         let x = 0
 
         c.beginPath()
         for (let i = 0; i < magBufferLength; i++) {
-            const v = timeDomainData[i] / 128.0
-            const y = (v * c.canvas.height) / 2
+            const v = (timeDomainData[i] + 1) / 2
+            const y = v * c.canvas.height
 
             if (i === 0) {
                 c.moveTo(x, y)
@@ -114,61 +135,12 @@ function run(stream: MediaStream) {
         c.stroke()
     }
 
-    function calculateHPS(spectrum: Float32Array, sampleRate: number, fftSize: number): number {
-
-        // Step 2: Initialize the Harmonic Product Spectrum (HPS)
-        const hps = new Array(spectrum.length).fill(1.0);
-
-        // Step 3: Calculate the HPS
-        for (let harmonic = 2; harmonic <= 4; harmonic++) {
-            const hpsIndex = Math.floor(harmonic * (spectrum.length / fftSize));
-
-            for (let i = hpsIndex; i < spectrum.length; i++) {
-                hps[i] *= spectrum[i];
-            }
-        }
-
-        // Step 4: Find the peak in the HPS
-        let maxHPSValue = 0;
-        let maxHPSIndex = 0;
-
-        for (let i = 0; i < hps.length; i++) {
-            if (hps[i] > maxHPSValue) {
-                maxHPSValue = hps[i];
-                maxHPSIndex = i;
-            }
-        }
-
-        // Step 5: Calculate the fundamental frequency
-        const fundamentalFrequency = (sampleRate / fftSize) * maxHPSIndex;
-
-        return fundamentalFrequency;
-    }
-
-    function findMaxFreq(freqDomainData: Float32Array) {
-        let maxDb = -Infinity
-        let hz = 0
-
-        for (let i = 0; i < freqDomainData.length; i++) {
-            const db = freqDomainData[i]
-            if (db > maxDb) {
-                maxDb = db
-                hz = frequencies[i]
-            }
-        }
-
-        return hz
-    }
-
     let audioContext = new AudioContext()
 
     let source = audioContext.createMediaStreamSource(stream)
 
     let analyser = audioContext.createAnalyser()
     analyser.fftSize = 2048
-
-    let frequencies = Array.from({ length: analyser.frequencyBinCount },
-        (_, i) => (i + 1) * (audioContext.sampleRate / 2) / analyser.frequencyBinCount)
 
     source.connect(analyser)
 
@@ -178,8 +150,11 @@ function run(stream: MediaStream) {
     let magBufferLength = analyser.fftSize
     let timeDomainData = new Float32Array(magBufferLength)
 
-    const yin = pitchfinder.YIN({ sampleRate: audioContext.sampleRate })
-    const amdf = pitchfinder.AMDF({ sampleRate: audioContext.sampleRate, minFrequency: 20, maxFrequency: 20000 })
+    const amdf = pitchfinder.AMDF({
+        sampleRate: audioContext.sampleRate,
+        minFrequency: 20,
+        maxFrequency: 20000
+    })
 
     function draw() {
         requestAnimationFrame(draw)
@@ -188,19 +163,20 @@ function run(stream: MediaStream) {
         analyser.getFloatFrequencyData(freqDomainData)
         analyser.getFloatTimeDomainData(timeDomainData)
 
-        // let hz = yin(timeDomainData)
-        // let hz = amdf(timeDomainData)
-        // let hz = calculateHPS(freqDomainData, audioContext.sampleRate, analyser.fftSize)
-        let hz = findMaxFreq(freqDomainData)
+        // analyze
+        let hz = amdf(timeDomainData)
 
-        let noteResult = findNote(hz)
+        if (hz && hz >= (audioContext.sampleRate / 2)) {
+            hz = null
+        }
 
-        updateStatus(hz, noteResult)
-        updateTuner(noteResult.semitones)
+        let note = getNoteFromHz(hz)
+
+        // update canvases
+        updateStatus(hz, note)
+        updateTuner(note.delta)
         updateSpectrum()
         updateOscilloscope()
-
-        console.log(hz)
     }
 
     requestAnimationFrame(draw)
