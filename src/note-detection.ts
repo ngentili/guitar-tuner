@@ -7,16 +7,7 @@ export interface NoteDetectionResult {
     delta: number // -0.5 to 0.5 semitones
 }
 
-export function getNoteFromHz(hz: number | null): NoteDetectionResult {
-
-    if (hz == null || hz < 0) {
-        return {
-            note: '',
-            octave: 0,
-            delta: 0,
-        }
-    }
-
+export function getNoteFromHz(hz: number): NoteDetectionResult {
     let semitonesAboveA4 = 12 * (Math.log2(hz) - Math.log2(A4))
     let noteIndex = Math.round(semitonesAboveA4)
 

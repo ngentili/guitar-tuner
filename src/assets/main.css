@@ -1,14 +1,15 @@
-:root {
+/* :root {
     --layout-outline: 1px solid orange;
-}
+} */
 
 html,
 body {
     margin: 0;
     height: 100vh;
     overflow: hidden;
-    background-color: black;
-    color: whitesmoke;
+    background-color: #1e1e1e;
+    color: rgb(212, 212, 212);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .flexbox-row {
@@ -27,11 +28,7 @@ body {
     flex: 1;
 }
 
-pre {
-    margin: 0;
-}
-
-.tuner-container {
+/* .tuner-container {
     position: relative;
     outline: var(--layout-outline);
 }
@@ -77,4 +74,4 @@ pre {
     height: 100%;
     width: 100%;
     outline: var(--layout-outline);
-}
+} */
